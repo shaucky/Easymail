@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "O2KUdNBNPTuzBMQtmELVaIY/mGLRjwQN7T4G/e2JUWU=",
+  "Source": "Easymail-server",
+  "BasePath": "_content/Easymail-server",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

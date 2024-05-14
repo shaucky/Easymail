@@ -3,6 +3,8 @@ package easymail.core {
     import flash.events.EventDispatcher;
     import flash.events.IOErrorEvent;
     import flash.events.ProgressEvent;
+    import flash.net.NetworkInfo;
+    import flash.net.NetworkInterface;
     import flash.net.Socket;
 
     /**
@@ -61,6 +63,7 @@ package easymail.core {
 
         public function Connection() {
             _socket = new Socket();
+            _localHostName = _getLocalIPAddress();
         }
         
         /**
@@ -99,6 +102,18 @@ package easymail.core {
             e.target.removeEventListener(IOErrorEvent.IO_ERROR, _onIOError);
             e.target.removeEventListener(Event.CLOSE, _onSocketClosed);
             dispatchEvent(new Event(Event.CLOSE));
+        }
+        private function _getLocalIPAddress():String {
+            var networkInfo:NetworkInfo = NetworkInfo.networkInfo;
+            var interfaces:Vector.<NetworkInterface> = networkInfo.findInterfaces();
+            var ipAddress:String = "";
+            for each (var networkInterface:NetworkInterface in interfaces) {
+                if (networkInterface.active && networkInterface.addresses.length > 0) {
+                    ipAddress = networkInterface.addresses[0].address;
+                    break;
+                }
+            }
+            return ipAddress;
         }
     }
 }

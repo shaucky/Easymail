@@ -28,7 +28,7 @@ package easymail.smtp {
     public class SMTPConnection extends Connection {
         private static const _SYNTAX_ERROR:String = "Arguments or syntax not accepted.";
         private static const _UTF8:String = "utf-8";
-        private var base64Encoder:ByteArray = new ByteArray();
+        private var _base64Encoder:ByteArray = new ByteArray();
         /**
          * @private
          */
@@ -88,7 +88,7 @@ package easymail.smtp {
          */
         public function sendEHLO():void {
             if (_localHostName.match(SMTPSyntax.DOMAIN) || _localHostName.match(SMTPSyntax.ADDRESS_LITERAL)) {
-                sendCommand("EHLO " + _localHostName);
+                _sendCommand("EHLO " + _localHostName);
             } else {
                 throw(new SMTPError(_SYNTAX_ERROR));
             }
@@ -101,7 +101,7 @@ package easymail.smtp {
          */
         public function sendHELO():void {
             if (_localHostName.match(SMTPSyntax.DOMAIN)) {
-                sendCommand("HELO " + _localHostName);
+                _sendCommand("HELO " + _localHostName);
             } else {
                 throw(new SMTPError(_SYNTAX_ERROR));
             }
@@ -112,7 +112,7 @@ package easymail.smtp {
          */
         public function sendMAILFROM(sender:String):void {
             if (sender.match(SMTPSyntax.REVERSE_PATH)) {
-                sendCommand("MAIL FROM:<" + sender + ">");
+                _sendCommand("MAIL FROM:<" + sender + ">");
             } else {
                 throw(new SMTPError(_SYNTAX_ERROR));
             }
@@ -138,7 +138,7 @@ package easymail.smtp {
                     throw(new SMTPError(_SYNTAX_ERROR));
                 }
             }
-            sendCommand(cmd);
+            _sendCommand(cmd);
         }
         /**
          * Send DATA command.
@@ -146,7 +146,7 @@ package easymail.smtp {
          * @see #sendMailMessage() sendMailMessage()
          */
         public function sendDATA():void {
-            sendCommand("DATA");
+            _sendCommand("DATA");
         }
         /**
          * Send mail message.
@@ -159,28 +159,28 @@ package easymail.smtp {
          */
         public function sendMailMessage(sender:String, recipient:String, title:String, data:String, contentType:String):void {
             data = data.replace(/(^\.\s*)/gm, "..$1");
-            sendCommand("Subject: " + title + "\r\nFrom: " + sender + "\r\nTo: " + recipient + "\r\nContent-Type: " + contentType + "\r\n\r\n" + data + "\r\n.");
+            _sendCommand("Subject: " + title + "\r\nFrom: " + sender + "\r\nTo: " + recipient + "\r\nContent-Type: " + contentType + "\r\n\r\n" + data + "\r\n.");
         }
         /**
          * Send RSET command.
          * <p>If wanting to reset the SMTP communication status, please send RSET instead of EHLO. Even if the formal semantics are the same, EHLO may cause the server to perform more behavior.</p>
          */
         public function sendRSET():void {
-            sendCommand("RSET");
+            _sendCommand("RSET");
         }
         /**
          * Send NOOP command.
          * <p>NOOP does not cause any behavior, and more commonly, it is used as a heartbeat packet to maintain connection.</p>
          */
         public function sendNOOP():void {
-            sendCommand("NOOP");
+            _sendCommand("NOOP");
         }
         /**
          * Send QUIT command.
          * <p>Notify the SMTP server to disconnect. Usually, after issuing this command, the local connection should be disconnected.</p>
          */
         public function sendQUIT():void {
-            sendCommand("QUIT");
+            _sendCommand("QUIT");
             dispatchEvent(new SMTPEvent(SMTPEvent.QUIT));
             removeEventListener(Event.CONNECT, _onConnect);
             removeEventListener(ProgressEvent.SOCKET_DATA, _onSocketData);
@@ -194,7 +194,7 @@ package easymail.smtp {
          */
         public function sendVRFY(string:String):void {
             if (string.match(SMTPSyntax.STRING)) {
-                sendCommand("VRFY" + string);
+                _sendCommand("VRFY" + string);
             } else {
                 throw(new SMTPError(SyntaxError));
             }
@@ -206,7 +206,7 @@ package easymail.smtp {
          */
         public function sendHELP(command:String):void {
             if (command.match(SMTPSyntax.STRING)) {
-                sendCommand("HELP " + command);
+                _sendCommand("HELP " + command);
             }
         }
         /**
@@ -220,20 +220,25 @@ package easymail.smtp {
             if (mechanism.match(SMTPSyntax.SASL_MECH)) {
                 if (initialResponse) {
                     if (initialResponse.match(SMTPSyntax.INITIAL_RESPONSE)) {
-                        initialResponse = toBase64(initialResponse);
+                        initialResponse = _toBase64(initialResponse);
                     } else {
                         throw(new SMTPError(_SYNTAX_ERROR));
                     }
-                    sendCommand("AUTH " + mechanism + " " + initialResponse);
+                    _sendCommand("AUTH " + mechanism + " " + initialResponse);
                 } else {
-                    sendCommand("AUTH " + mechanism);
+                    _sendCommand("AUTH " + mechanism);
                 }
             }
         }
+        /**
+         * Send a response in base64 encoding.
+         * <p>Some responses need be in base64 encoding, such as username and password for AUTH LOGIN.</p>
+         * @param string response which need be in base64 encoding.
+         */
         public function sendBase64(string:String):void {
-            var str:String = toBase64(string);
+            var str:String = _toBase64(string);
             if (str.match(SMTPSyntax.BASE64)) {
-                sendCommand(toBase64(string));
+                _sendCommand(_toBase64(string));
             } else {
                 throw(new SMTPError(_SYNTAX_ERROR));
             }
@@ -241,7 +246,7 @@ package easymail.smtp {
         /**
          * @private
          */
-        protected function sendCommand(command:String):void {
+        protected function _sendCommand(command:String):void {
             _socket.writeUTFBytes(command + "\r\n");
             trace(command + "\r\n");
             _socket.flush();
@@ -249,23 +254,24 @@ package easymail.smtp {
         /**
          * @private
          */
-        private function toBase64(string:String):String {
+        private function _toBase64(string:String):String {
             var str:String;
-            base64Encoder.clear();
-            base64Encoder.writeMultiByte(string, _UTF8);
-            str = base64Encoder.toBase64();
-            base64Encoder.clear();
+            _base64Encoder.clear();
+            _base64Encoder.writeMultiByte(string, _UTF8);
+            str = _base64Encoder.toBase64();
+            _base64Encoder.clear();
             return str;
         }
         /**
-         * @private
+         * Decode a string from Base64 encoding.
+         * @param string content needed decode.
          */
         public function fromBase64(string:String):String {
             var str:String;
-            base64Encoder.clear();
-            base64Encoder.writeBase64(string);
-            str = base64Encoder.toString();
-            base64Encoder.clear();
+            _base64Encoder.clear();
+            _base64Encoder.writeBase64(string);
+            str = _base64Encoder.toString();
+            _base64Encoder.clear();
             return str;
         }
     }
