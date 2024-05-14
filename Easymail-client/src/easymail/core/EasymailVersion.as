@@ -13,7 +13,7 @@ package easymail.core {
          * @return version of the library.
          */
         public static function get version():String {
-            return _MAJOR_VERSION + "." + _MINOR_VERSION + "." + _REVISION_VERSION;
+            return new Array(_MAJOR_VERSION, _MINOR_VERSION, _REVISION_VERSION).join(".");
         }
         /**
          * Returns the major version of the library.
